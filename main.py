@@ -22,6 +22,14 @@ class Game:
         icon = pygame.image.load(ICON_NAME)
         self.game_icon = pygame.display.set_icon(icon)
 
+    def createTilemap(self):
+        for i, row in enumerate(tilemap):
+            for j, column in enumerate(row):
+                if column == "B":
+                    Block(self, j, i)
+                elif column == "P":
+                    Player(self, j, i)
+
     def new(self):
         # Ist der spieler noch aktiv/lebendig
         self.playing = True
@@ -35,8 +43,11 @@ class Game:
         self.attacks = pygame.sprite.LayeredUpdates()
         # Container für Tränke, Kisten, Waffen
         self.items = pygame.sprite.LayeredUpdates()
-        # Spieler hinzufügen
-        self.player = Player(self, 1, 2)  # self ist das Game Objekt
+
+        ## Spieler hinzufügen
+        # self.player = Player(self, 1, 2)  # self ist das Game Objekt
+        # Ganzes Spielfeld zeichnen statt nur Spieler
+        self.createTilemap()
 
     def events(self):
         # Game Loop Events
