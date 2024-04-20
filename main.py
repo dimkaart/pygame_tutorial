@@ -21,10 +21,14 @@ class Game:
         # Spielicon
         icon = pygame.image.load(ICON_NAME)
         self.game_icon = pygame.display.set_icon(icon)
+        # Lade sämtliche Spritesheets (Character, Gegner, Wiesen, Heiltränke, etc.)
+        self.character_spritesheet = Spritesheet("Assets/Images/character.png")
+        self.terrain_spritesheet = Spritesheet("Assets/Images/Outdoor.png")
 
     def createTilemap(self):
         for i, row in enumerate(tilemap):
             for j, column in enumerate(row):
+                Ground(self, j, i)
                 if column == "B":
                     Block(self, j, i)
                 elif column == "P":

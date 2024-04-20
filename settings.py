@@ -12,8 +12,9 @@ GAME_TITLE = "Bestes RPG aller Zeiten"
 ICON_NAME = "Assets/Images/game_icon.png"
 
 # Darstellung von Assets übereinander im Spiel (nach Ebenen)
-PLAYER_EBENE = 2
-BLOCK_EBENE = 1
+PLAYER_EBENE = 3
+BLOCK_EBENE = 2
+GROUND_EBENE = 1
 
 # Geschwindigkeit mit der sich der Spieler auf dem Feld bewegt
 PLAYER_SPEED = 4
