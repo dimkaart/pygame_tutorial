@@ -11,6 +11,9 @@ GAME_TITLE = "Bestes RPG aller Zeiten"
 # Spielicon (from https://itch.io/game-assets/free/tag-icons)
 ICON_NAME = "Assets/Images/game_icon.png"
 
+# Musik Lautstärke
+VOLUME = 0.25
+
 # Darstellung von Assets übereinander im Spiel (nach Ebenen)
 PLAYER_EBENE = 4
 ENEMY_EBENE = 3

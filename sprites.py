@@ -95,6 +95,7 @@ class Player(pygame.sprite.Sprite):
     def collide_healing(self):
         hits = pygame.sprite.spritecollide(self, self.game.items, dokill=True)
         if hits:
+            HealingItem.sound_track.play()
             self.hp = LifeBar(self.game, min(100, self.hp.lifebar + hits[0].healingEffect))
 
     def collide_blocks(self, direction):
@@ -486,11 +487,21 @@ class Attack(pygame.sprite.Sprite):
         # Variable, die bestimmet, welche der Animationen angezeigt werden soll
         self.animate_loop = 0
 
+        # Lade Soundeffekte für Treffer und Fehler
+        self.sound_hit = pygame.mixer.Sound("Assets/Music/Soundeffect/swordhit.wav")
+        self.sound_hit.set_volume(0.75)
+        self.sound_miss = pygame.mixer.Sound("Assets/Music/Soundeffect/swordmiss.wav")
+        self.sound_miss.set_volume(0.05)
+
     def update(self):
         self.animate()
         hit = self.collide_enemies()
         if hit:
+            self.sound_hit.play()
+            # Wenn ein Gegner getötet wurde erhöhe den Punktestand um 1
             self.game.player.gamepoints = Points(self.game, self.game.player.gamepoints.points + 1)
+        else:
+            self.sound_miss.play()
 
     def collide_enemies(self):
         hits = pygame.sprite.spritecollide(
@@ -595,6 +606,11 @@ class LifeBar(pygame.sprite.Sprite):
 
 
 class HealingItem(pygame.sprite.Sprite):
+    # Soundeffekt
+    pygame.mixer.init()
+    sound_track = pygame.mixer.Sound("Assets/Music/Soundeffect/potion.wav")
+    sound_track.set_volume(0.15)
+
     def __init__(self, game, x, y, effect):
         self.game = game
         self._layer = GROUND_EBENE

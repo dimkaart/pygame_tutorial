@@ -4,6 +4,10 @@ import pygame
 from settings import *
 from sprites import *
 
+pygame.mixer.init()
+# Lade sounds vor, damit diese sofort nach Knopfdruck gespielt werden
+pygame.mixer.pre_init(44100, -16, 2, 512)
+
 
 class Game:
     def __init__(self):
@@ -39,7 +43,7 @@ class Game:
 
         self.font_points = pygame.font.Font("Assets/Fonts/arial.ttf", 32)
 
-        self.volume = 0.25
+        self.volume = VOLUME
 
     def createTilemap(self):
         for i, row in enumerate(tilemap):
@@ -155,7 +159,7 @@ class Game:
     def main(self):
         pygame.mixer.music.load("Assets/Music/Track/game_music.wav")
         pygame.mixer.music.set_volume(self.volume - 50)
-        pygame.mixer.music.play(-1)
+        pygame.mixer.music.play(-1)  # -1 spielt die Musik unendlich Mal weiter (x>=0: Musik wird x Mal wiedergegeben)
 
         # Game Loop
         while self.playing:
@@ -173,6 +177,11 @@ class Game:
 
         # Definiere einen Knopf mittels unserer Button Klasse
         play_button = Button(10, 100, 200, 100, WHITE, BLACK, "Play", 64)
+
+        # Lade Musik fpr Startbildschirm
+        pygame.mixer.music.load("Assets/Music/Track/intro_music.wav")
+        pygame.mixer.music.set_volume(self.volume)
+        pygame.mixer.music.play(-1)
 
         # Überprüfen ob das Spiel mittels "X" in der rechten oberen Ecke geschlossen wurde
         while intro:
@@ -205,6 +214,15 @@ class Game:
 
         # Definiere einen Knopf Restart, um das Spiel neu zu starten
         restart_button = Button(10, 100, 250, 150, WHITE, BLACK, "Restart", 64)
+        # Definiere einen Knopf Punkte, um den Spielstand wiederzugeben
+        points_button = Button(800, 100, 350, 150, WHITE, BLACK, f"Punkte: {self.player.gamepoints.points}", 48)
+
+        # Fadeout für die Spielmusik
+        pygame.mixer.music.fadeout(1000)
+        # Lade Musik für Endbildschirm
+        pygame.mixer.music.load("Assets/Music/Track/gameover_INITIAL.wav")
+        pygame.mixer.music.set_volume(self.volume)
+        pygame.mixer.music.play(0)
 
         # Lösche alle Elemente auf derm Bildschirm um nur den Endbildschirm anzeigen zu lassen
         for sprite in self.all_sprites:
@@ -231,6 +249,7 @@ class Game:
                 self.screen.blit(self.gameover_background, (0, 0))
                 self.screen.blit(text, text_rect)
                 self.screen.blit(restart_button.image, restart_button.rect)
+                self.screen.blit(points_button.image, points_button.rect)
                 self.clock.tick(FPS)
 
                 pygame.display.update()
