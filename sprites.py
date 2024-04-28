@@ -35,12 +35,22 @@ class Player(pygame.sprite.Sprite):
         # Variable, die bestimmt, welches der animationen angezeigt werden soll
         self.animation_loop = 1
 
+        # Variable für die Lebenspunkte
+        self.hp = LifeBar(self.game, HP)
+
+        # Variable für Anzahl an getöteten Gegnern
+        self.gamepoints = Points(self.game, 0)
+
     def update(self):
         # Wird jedes mal im Game aufgerufen, wenn self.all_sprites.update() verwendet wird
         # und die Spieler Klasse an der Reihe dran ist
         self.movement()
         # Visualisiere die Bewegungen des Spielers
         self.animate()
+        # Überprüfe ob der Spieler vom Gegner berührt wurde und somit gestorben ist
+        self.collide_enemy()
+        # Überprüfe ob der Spieler ein HealingItem berührt und somit seine Lebenspunkte wiederherstellt
+        self.collide_healing()
         # Übertrage die Beweging des Spielers aus movement() auf die Darstellung des Spielers auf dem Bildschirm (in x-Richtung)
         self.rect.x += self.x_change
         # Überprüfe ob der Spieler mit der Wand in x-Richtung kollidiert
@@ -69,6 +79,23 @@ class Player(pygame.sprite.Sprite):
         if keys[pygame.K_DOWN]:
             self.y_change += PLAYER_SPEED
             self.facing = "down"
+
+    def collide_enemy(self):
+        hits = pygame.sprite.spritecollide(self, self.game.enemies, dokill=False)
+        if hits:
+            # Spieler stirbt nur dann wenn keine Lebenspunkte mehr vorhanden sind
+            if self.hp.lifebar > 1:
+                self.hp = LifeBar(self.game, self.hp.lifebar - 1)
+            else:
+                # Lösche den Spieler aus all_sprites und somit auh aus dem Spiel
+                self.kill()
+                # Beende das Spiel
+                self.game.playing = False
+
+    def collide_healing(self):
+        hits = pygame.sprite.spritecollide(self, self.game.items, dokill=True)
+        if hits:
+            self.hp = LifeBar(self.game, min(100, self.hp.lifebar + hits[0].healingEffect))
 
     def collide_blocks(self, direction):
         if direction == "x":
@@ -394,3 +421,231 @@ class Enemy(pygame.sprite.Sprite):
                 elif self.y_change < 0:
                     # Fall 4: Bewegung nach oben
                     self.rect.y = hits[0].rect.bottom
+
+
+class Button:
+    def __init__(self, x, y, width, height, fg, bg, content, fontsize):  # fg: Vordergrundfarbe, bg: Hintergrundfarbe
+        self.font = pygame.font.Font("Assets/Fonts/arial.ttf", fontsize)
+        self.content = content
+
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+
+        self.fg = fg
+        self.bg = bg
+
+        # Generiere ein Rechteck (Ebene) und fülle diese mit der Hintergrundfarbe self.bg
+        self.image = pygame.Surface([self.width, self.height])
+        self.image.fill(self.bg)
+        # Hitbox des Knopfs
+        self.rect = self.image.get_rect()
+        self.rect.x = self.x
+        self.rect.y = self.y
+
+        # Stelle den Inhalt (self.content) in de rSchrift self.font dar
+        self.text = self.font.render(self.content, True, self.fg)
+        # Postion des Textes
+        self.text_rect = self.text.get_rect(center=(self.width // 2, self.height // 2))
+
+        # Darstellung des Knopfes auf dem Bildschirm
+        self.image.blit(self.text, self.text_rect)
+
+    def is_pressed(self, pos, pressed):
+        # - pos: Position der Maus
+        # - pressed: Wurde die Maus gedrückt?
+        if self.rect.collidepoint(pos):  # Kollidiert der Knopf mit der Maus?
+            if pressed[0]:
+                return True
+            return False
+        return False
+
+
+class Attack(pygame.sprite.Sprite):
+    def __init__(self, game, x, y):
+        self.game = game
+        self._layer = PLAYER_EBENE
+        # Füge Attack Asset zu all_sprites und attacks in Game hinzu
+        self.groups = self.game.all_sprites, self.game.attacks
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        # Position der Attacke
+        self.x = x
+        self.y = y
+        # Größe/Reichweite der Attacke
+        self.width = TILESIZE
+        self.height = TILESIZE
+        # Darstellung der Attacke
+        self.image = self.game.attack_spritesheet.get_sprite(0, 0, self.width, self.height)
+
+        # Hitbos des Objekts (Attacke)
+        self.rect = self.image.get_rect()
+        self.rect.x = self.x
+        self.rect.y = self.y
+
+        # Variable, die bestimmet, welche der Animationen angezeigt werden soll
+        self.animate_loop = 0
+
+    def update(self):
+        self.animate()
+        hit = self.collide_enemies()
+        if hit:
+            self.game.player.gamepoints = Points(self.game, self.game.player.gamepoints.points + 1)
+
+    def collide_enemies(self):
+        hits = pygame.sprite.spritecollide(
+            self, self.game.enemies, dokill=True
+        )  # Lösche den Gegner (und die Attacke), falls die Attacke diesen trifft
+        if hits:
+            return hits
+
+    def animate(self):
+        # Richtung in die der Spieler schaut ist gleichzeitig die Richtung in die er angreift
+        direction = self.game.player.facing
+
+        down_animate = [
+            self.game.attack_spritesheet.get_sprite(0, 32, self.width, self.height),
+            self.game.attack_spritesheet.get_sprite(32, 32, self.width, self.height),
+            self.game.attack_spritesheet.get_sprite(64, 32, self.width, self.height),
+            self.game.attack_spritesheet.get_sprite(96, 32, self.width, self.height),
+            self.game.attack_spritesheet.get_sprite(128, 32, self.width, self.height),
+        ]
+
+        up_animate = [
+            self.game.attack_spritesheet.get_sprite(0, 0, self.width, self.height),
+            self.game.attack_spritesheet.get_sprite(32, 0, self.width, self.height),
+            self.game.attack_spritesheet.get_sprite(64, 0, self.width, self.height),
+            self.game.attack_spritesheet.get_sprite(96, 0, self.width, self.height),
+            self.game.attack_spritesheet.get_sprite(128, 0, self.width, self.height),
+        ]
+
+        left_animate = [
+            self.game.attack_spritesheet.get_sprite(0, 96, self.width, self.height),
+            self.game.attack_spritesheet.get_sprite(32, 96, self.width, self.height),
+            self.game.attack_spritesheet.get_sprite(64, 96, self.width, self.height),
+            self.game.attack_spritesheet.get_sprite(96, 96, self.width, self.height),
+            self.game.attack_spritesheet.get_sprite(128, 96, self.width, self.height),
+        ]
+
+        right_animate = [
+            self.game.attack_spritesheet.get_sprite(0, 64, self.width, self.height),
+            self.game.attack_spritesheet.get_sprite(32, 64, self.width, self.height),
+            self.game.attack_spritesheet.get_sprite(64, 64, self.width, self.height),
+            self.game.attack_spritesheet.get_sprite(96, 64, self.width, self.height),
+            self.game.attack_spritesheet.get_sprite(128, 64, self.width, self.height),
+        ]
+
+        if direction == "up":
+            self.image = up_animate[math.floor(self.animate_loop)]
+            self.animate_loop += 0.5
+            if self.animate_loop >= 5:  # Wenn die Animation vollständig durchgelaufen ist
+                self.kill()  # Löscje das Asset Attacks
+
+        if direction == "down":
+            self.image = down_animate[math.floor(self.animate_loop)]
+            self.animate_loop += 0.5
+            if self.animate_loop >= 5:  # Wenn die Animation vollständig durchgelaufen ist
+                self.kill()  # Löscje das Asset Attacks
+
+        if direction == "left":
+            self.image = left_animate[math.floor(self.animate_loop)]
+            self.animate_loop += 0.5
+            if self.animate_loop >= 5:  # Wenn die Animation vollständig durchgelaufen ist
+                self.kill()  # Löscje das Asset Attacks
+
+        if direction == "right":
+            self.image = right_animate[math.floor(self.animate_loop)]
+            self.animate_loop += 0.5
+            if self.animate_loop >= 5:  # Wenn die Animation vollständig durchgelaufen ist
+                self.kill()  # Löscje das Asset Attacks
+
+
+class LifeBar(pygame.sprite.Sprite):
+    def __init__(self, game, hp):
+        self.game = game
+        self._layer = PLAYER_EBENE
+
+        # Aktueller Stand der Lebenspunkte
+        self.lifebar = hp
+
+        # Füge die Lebenspunkte Asset zu all_sprites in Game hinzu
+        self.groups = self.game.all_sprites
+        pygame.sprite.Sprite.__init__(self, self.groups)
+
+        # Position der Lebenspunkte
+        self.x = 1
+        self.y = 1
+        print(hp)
+
+        if hp >= 75:
+            self.image = self.game.health_spritesheet.get_sprite(3, 20, 42, 7)
+        elif hp >= 50:
+            self.image = self.game.health_spritesheet.get_sprite(51, 20, 42, 7)
+        elif hp >= 25:
+            self.image = self.game.health_spritesheet.get_sprite(99, 20, 42, 7)
+        elif hp > 0:
+            self.image = self.game.health_spritesheet.get_sprite(146, 20, 42, 7)
+
+        self.image = pygame.transform.scale(self.image, (75, 25))
+
+        # Hitbox des Objekts (Life Bar)
+        self.rect = self.image.get_rect()
+        self.rect.x = self.x
+        self.rect.y = self.y
+
+
+class HealingItem(pygame.sprite.Sprite):
+    def __init__(self, game, x, y, effect):
+        self.game = game
+        self._layer = GROUND_EBENE
+        # Füge Item Asset zu all_sprites und items in Game hinzu
+        self.groups = self.game.all_sprites, self.game.items
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        # Position des Items
+        self.x = x * TILESIZE
+        self.y = y * TILESIZE
+        # Größe des Items
+        self.width = TILESIZE
+        self.height = TILESIZE
+
+        # Darstellnug des Items
+        if effect <= 25:
+            self.image = self.game.item_spritesheet.get_sprite(0, 448, self.width, self.height)
+        elif (effect > 25) and (effect <= 50):
+            self.image = self.game.item_spritesheet.get_sprite(128, 608, self.width, self.height)
+        self.image.set_colorkey(WHITE)
+        # Hitbox des Objekts (Healing Item)
+        self.rect = self.image.get_rect()
+        self.rect.x = self.x
+        self.rect.y = self.y
+
+        # Heilungseffekt
+        self.healingEffect = effect
+
+
+class Points(pygame.sprite.Sprite):
+    def __init__(self, game, points=0):
+        self.game = game
+        self._layer = PLAYER_EBENE
+
+        # Aktueller Stand der Punkte
+        self.points = points
+
+        # Füge Punkte Asset zu all_spirtes in Game hinzu
+        self.groups = self.game.all_sprites
+        pygame.sprite.Sprite.__init__(self, self.groups)
+
+        # Position der Punkte
+        self.x = WIN_BREITE - 3 * TILESIZE
+        self.y = 0
+        # Größe des Punktestands
+        self.width = TILESIZE
+        self.height = TILESIZE
+
+        self.image = self.game.item_spritesheet.get_sprite(224, 382, self.width, self.height)
+        self.image.set_colorkey(WHITE)
+
+        # Hitbos des Objekts (Punkte)
+        self.rect = self.image.get_rect()
+        self.rect.x = self.x
+        self.rect.y = self.y
